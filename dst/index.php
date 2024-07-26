@@ -3,7 +3,7 @@
 <?php
 
 function test () {echo ("
-    <h3 class='base-padding'>STATE</h3>
+    <h3 class='base-padding'>INFO</h3>
     <p class='fs-small base-padding success-bg-color'>TEST</p>
 ");};
 
@@ -21,23 +21,22 @@ if ($conn->connect_error) {
 
 $t_name = "DATATABLE";
 
-$sql = "SHOW TABLES LIKE '{$t_name}'";
+$sql = "SHOW TABLES LIKE '$t_name'";
 $res = $conn->query($sql);
 
 if ($res->num_rows == 0) {
-    $sql = "CREATE TABLE '{$t_name}' (
+    $sql = "CREATE TABLE $t_name (
       id INT AUTO_INCREMENT PRIMARY KEY,
       string VARCHAR(255) NOT NULL,
       words VARCHAR(255) NOT NULL
     )";
-    $table_name = $res->fetch_fields()[0]->table;
     if ($conn->query($sql) === TRUE) {
-        echo "<p class='fs-small base-padding success-bg-color'>Создана таблица с именем: {$t_name}</p>";
+        echo "<p class='fs-small base-padding success-bg-color'>Создана таблица с именем: $t_name</p>";
     } else {
         echo "<p class='fs-small base-padding failure-bg-color'>DATA NOT CREATED</p>" . $conn->error;
     }
 } else {
-    echo "<p class='fs-small base-padding success-bg-color'>Существует таблица с именем: {$t_name}</p>";
+    echo "<p class='fs-small base-padding success-bg-color'>Существует таблица с именем: $t_name</p>";
 }
 
 ?>
