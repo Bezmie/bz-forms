@@ -1,6 +1,6 @@
 {
   "name": "bz-forms",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "keywords": [],
   "description": "forms test",
   "license": "ISC",
@@ -11,5 +11,8 @@
   },
   "devDependencies": {
     "soma": "github:stanislavzadiraev/soma"
+  },
+  "dependencies": {
+    "build": "^0.1.4"
   }
 }
