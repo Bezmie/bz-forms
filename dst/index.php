@@ -1,133 +1,192 @@
-<?php ?>
-<section>
 <?php
 
-function test () {echo ("
-    <h3 class='base-padding'>INFO</h3>
-    <p class='fs-small base-padding success-bg-color'>TEST</p>
-");};
+////////////////////////////////////////////////////////////////////////////////////////////
+// COMMONS /////////////////////////////////////////////////////////////////////////////////
 
-test();
+function RandomString($length) {
+    $chs = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $str = '';
+    for ($i = 0; $i < $length; $i++) {
+        $str .= $chs[mt_rand(0, strlen($chs) - 1)];
+    }
+    return $str;
+  }
 
-////
+  function DrawMsg($msg, $type) {
+    $prefs = [
+        'success' => 'Успех: ',
+        'failure' => 'Провал: '
+    ];
+    $classes = [
+        'success' => 'success-bg-color',
+        'failure' => 'failure-bg-color'
+    ];
+    $pref = $prefs[$type] ?? '';
+    $class = $classes[$type] ?? '';
+    return "<p class='fs-small base-padding $class'>$pref$msg</p>";
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// FUNC ////////////////////////////////////////////////////////////////////////////////////
+
+function isSqlConnect($arg) {
+    return DrawMsg(
+        $arg->connect_error 
+            ? "Нет содинения с SQL</p>" . $arg->connect_error
+            : "Есть соединение с SQL",
+        $arg->connect_error 
+            ? 'failure' 
+            : 'success'
+    );
+}
+
+function isTableExists($name, $conn) {
+    $sql = "SHOW TABLES LIKE '$name'";
+    $res = $conn->query($sql);
+    return $res->num_rows > 0
+        ? DrawMsg("Таблица '$name' существует", "success")
+        : DrawMsg("Таблица '$name' не существует", "failure");
+}
+
+function createDefaultTable($name, $conn) {
+    return $conn->query("CREATE TABLE $name (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        string VARCHAR(255) NOT NULL,
+        words VARCHAR(255) NOT NULL
+    )") 
+        ? DrawMsg("Таблица '$name' была создана.", 'success') 
+        : DrawMsg("Не удалось создать таблицу '$name'.", 'failure');
+}
+
+function displayTable($name, $conn) {
+    $res = isTableExists($name, $conn);
+    return strpos($res, 'success') !== false
+        ? "<h3 class='base-padding'>TABLE: $name</h3>"
+           . tableDeleteForm($name)
+           . "<table class='fs-small'>
+           <thead class='txt-align-left'>"
+           . implode('', array_map(function($field) {
+               return "<th class='base-padding txt-uppercase'>" . $field->name . "</th>";
+           }, $conn->query("SELECT * FROM `$name`")->fetch_fields()))
+           . "<th class='base-padding'>ACTION</th>
+           </thead>"
+           . implode('', array_map(function($row) use ($name, $conn) {
+               return "<tr class='base-padding'>"
+                   . implode('', array_map(function($value) {
+                       return "<td class='base-padding'>$value</td>";
+                   }, $row))
+                   . "<td class='base-padding'>"
+                   . rowDeleteForm($row["id"])
+                   . "</td>
+                   </tr>";
+           }, $conn->query("SELECT * FROM `$name`")->fetch_all(MYSQLI_ASSOC)))
+           . rowAddForm($name)
+           . "</table>"
+        : createTableForm($name);
+}
+
+function createTableForm($name) {
+    return "<form class='m-0' method='post' action='" . htmlspecialchars($_SERVER["PHP_SELF"]) . "'>
+            <input type='hidden' name='action' value='create_table'>
+            <input type='hidden' name='table_name' value='$name'>
+            <button type='submit' class='create-btn fs-small'>CREATE DEFAULT TABLE</button>
+            </form>";
+}
+
+function tableDeleteForm($name) {
+    return "<form class='m-0' method='post' action='" . htmlspecialchars($_SERVER["PHP_SELF"]) . "'>
+            <input type='hidden' name='action' value='delete_table'>
+            <input type='hidden' name='table_name' value='$name'>
+            <button type='submit' class='delete-btn fs-small'>DROP TABLE</button>
+            </form>";
+}
+
+function deleteTableData($name, $conn) {
+    $sql = "DROP TABLE `$name`";
+    return $conn->query($sql) === TRUE
+            ? DrawMsg("Таблица '$name' была успешно удалена.", "success")
+            : DrawMsg("Ошибка при удалении таблицы '$name': " . $conn->error, 'failure');
+}
+
+function rowDeleteForm($id) {
+    return "<form class='m-0' method='post' action='" . htmlspecialchars($_SERVER["PHP_SELF"]) . "'>
+            <input type='hidden' name='action' value='delete_row'>
+            <input type='hidden' name='delete_id' value='$id'>
+            <button type='submit' class='delete-btn fs-small'>DELETE</button>
+            </form>";
+}
+
+function rowDeleteData($name, $conn) {
+    if (isset($_POST['delete_id'])) {
+        $id = $conn->real_escape_string($_POST['delete_id']);
+        $sql = "DELETE FROM `$name` WHERE id = '$id'";
+        return $conn->query($sql) === TRUE
+            ? DrawMsg("Строка с ID $id удалена.", "success")
+            : DrawMsg("Ошибка при удалении строки: " . $conn->error, 'failure');
+    }
+    return "";
+}
+
+function rowAddForm($name) {
+    return "<tr class='base-padding'>
+            <td class='base-padding'></td>
+            <td class='base-padding'></td>
+            <form class='m-0' method='post' action='" . htmlspecialchars($_SERVER["PHP_SELF"]) . "'>
+            <input type='hidden' name='action' value='add_row'>
+            <input type='hidden' name='table_name' value='$name'>
+            <td class='base-padding'><input type='text' name='words'required placeholder='...' class='fs-small'></td>
+            <td class='base-padding'><button type='submit' class='add-btn fs-small'>ADD</button></td>
+            </form>
+            </tr>";
+}
+
+function rowAddData($name, $conn) {
+    if (isset($_POST['words'])) {
+        $string = RandomString(16);
+        $words = $conn->real_escape_string($_POST['words']);
+        $sql = "INSERT INTO `$name` (id, string, words) VALUES (NULL, '$string','$words')";
+        return $conn->query($sql) === TRUE
+            ? DrawMsg("Новая строка с ID {$conn->insert_id} добавлена.", "success")
+            : DrawMsg("Ошибка при добавлении строки: " . $conn->error, 'failure');
+    }
+    return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// BACK ////////////////////////////////////////////////////////////////////////////////////
 
 $conn = new mysqli("mysql", "user", "word", "base");
 
-if ($conn->connect_error) {
-  die("<p class='fs-small base-padding failure-bg-color'>Нет содинения с SQL</p>" . $conn->connect_error);
-} else {
-  echo "<p class='fs-small base-padding success-bg-color'>Есть соединение с SQL</p>";
+$table_prime = "MAIN";
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// CLIENT ///////////////////////////////////////////////////////////////////////////////////
+
+echo isSqlConnect($conn);
+
+echo isTableExists($table_prime, $conn);
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $action = isset($_POST['action']) ? $_POST['action'] : '';
+    switch ($action) {
+        case 'create_table': 
+            if (strpos(isTableExists($table_prime, $conn), 'failure') !== false) {
+                echo createDefaultTable($table_prime, $conn);
+            } 
+            break;
+        case 'delete_table':
+            if (strpos(isTableExists($table_prime, $conn), 'success') !== false) {
+                echo deleteTableData($table_prime, $conn);
+            } break;
+        case 'delete_row': echo rowDeleteData($table_prime, $conn); break;
+        case 'add_row': echo rowAddData($table_prime, $conn); break;
+        default: break;
+    }
 }
 
-$t_name = "DATATABLE";
-
-$sql = "SHOW TABLES LIKE '$t_name'";
-$res = $conn->query($sql);
-
-if ($res->num_rows == 0) {
-    $sql = "CREATE TABLE $t_name (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      string VARCHAR(255) NOT NULL,
-      words VARCHAR(255) NOT NULL
-    )";
-    if ($conn->query($sql) === TRUE) {
-        echo "<p class='fs-small base-padding success-bg-color'>Создана таблица с именем: $t_name</p>";
-    } else {
-        echo "<p class='fs-small base-padding failure-bg-color'>DATA NOT CREATED</p>" . $conn->error;
-    }
-} else {
-    echo "<p class='fs-small base-padding success-bg-color'>Существует таблица с именем: $t_name</p>";
-}
-
-?>
-</section>
-<section>
-<?php
-
-    function form () {echo ('
-        <h3 class="base-padding">FORM</h3>
-        <form method="post" action="'.htmlspecialchars($_SERVER["PHP_SELF"]).'">
-            <div class="form-group"> 
-                <label for="words">WORDS</label>
-                <input type="text" id="words" name="words"></input>
-            </div>
-            <input type="hidden" name="string" value="' . genRandStr(16) . '">
-            <button type="submit">SUBMIT</button>
-        </form>
-    ');};
-
-    form();
-
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' ) {
-        if (!empty($_POST['words'])) {
-            $words = $_POST['words'];
-            $string = $_POST['string'];
-            $sql = "INSERT INTO $t_name (id, string, words) VALUES (NULL, '$string', '$words')";
-            if ($conn->query($sql) === TRUE) {
-                echo "<p class='fs-small base-padding success-bg-color'>ADDED: {$words} </p>";
-            } else {
-                echo "<p class='fs-small base-padding failure-bg-color'>NOT ADDED . $conn->error</p>";
-            }
-        } else {
-            echo "<p class='fs-small base-padding failure-bg-color'>Поле WORDS не было заполнено в форме.</p>";
-        }
-    }
-
-?>
-</section>
-<section>
-<?php
-
-$sql = "SELECT * FROM `{$t_name}`";
-$res = $conn->query($sql);
-
-if ($res->num_rows > 0) {
-    $table_name = $res->fetch_fields()[0]->table;
-    echo "<h3 class='base-padding'>TABLE: $table_name</h3>";
-    echo "<table class='fs-small'>";
-    echo "<thead class='txt-align-left'><th class='base-padding'>ID</th><th class='base-padding'>STRING</th><th class='base-padding'>WORDS</th><th class='base-padding'>ACTION</th></thead>";
-    while ($row = $res->fetch_assoc()) {
-        echo "<tr class='base-padding'>";
-        echo "<td class='base-padding'>" . $row["id"] . "</td>";
-        echo "<td class='base-padding'>" . $row["string"] . "</td>";
-        echo "<td class='base-padding'>" . $row["words"] . "</td>";
-        echo "<td class='base-padding'>";
-        echo "<form class='m-0' method='post' action='" . htmlspecialchars($_SERVER["PHP_SELF"]) . "'>";
-        echo "<input type='hidden' name='delete_id' value='" . $row["id"] . "'>";
-        echo "<button type='submit' class='delete-btn fs-small'>DELETE</button>";
-        echo "</form>";
-        echo "</td>";
-        echo "</tr>";
-    }
-    echo "</table>";
-
-    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["delete_id"])) {
-        $delete_id = $_POST["delete_id"];
-        $delete_sql = "DELETE FROM `{$t_name}` WHERE id = $delete_id";
-        if ($conn->query($delete_sql) === TRUE) {
-            echo "<p class='fs-small base-padding success-bg-color'>Строка с ID $delete_id удалена</p>";
-        } else {
-            echo "<p class='fs-small base-padding failure-bg-color'>Ошибка при удалении: " . $conn->error . "</p>";
-        }
-    }
-} else {
-    echo "<p class='fs-small base-padding failure-bg-color'>DATA EMPTY</p>";
-}
+echo displayTable($table_prime, $conn);
 
 $conn->close();
-
-?>
-    </section>
-<?php
-
-function genRandStr($length) {
-  $chs = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  $str = '';
-  for ($i = 0; $i < $length; $i++) {
-      $str .= $chs[mt_rand(0, strlen($chs) - 1)];
-  }
-  return $str;
-}
 
 ?>
 
@@ -162,6 +221,7 @@ tbody > tr:nth-of-type(odd) {background-color: white;}
 .failure-bg-color {background-color:var(--failure-bg-color); border-left: 4px solid;}
 .base-padding {padding: var(--base-padding);}
 .fs-small{font-size:var(--fs-small)}
+.txt-uppercase {text-transform: uppercase;}
 .txt-align-left {text-align: left;}
 .txt-align-right {text-align: right;}
 
@@ -183,6 +243,7 @@ textarea {
 }
 
 button[type="submit"] {
+    width: 100%;
     background-color: #4CAF50;
     color: white;
     padding: 10px 20px;
