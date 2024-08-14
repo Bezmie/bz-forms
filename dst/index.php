@@ -189,7 +189,6 @@ echo displayTable($table_prime, $conn);
 $conn->close();
 
 ?>
-
 <style>
 :root {
   --base-padding: 8px 10px;
