@@ -216,7 +216,6 @@ section {
 table {width: 100%; border-collapse: collapse;}
 tbody > tr:nth-of-type(even) {background-color: var(--base-bg-color);}
 tbody > tr:nth-of-type(odd) {background-color: white;}
-
 .success-bg-color {background-color:var(--success-bg-color); border-left: 4px solid;}
 .failure-bg-color {background-color:var(--failure-bg-color); border-left: 4px solid;}
 .base-padding {padding: var(--base-padding);}
@@ -224,10 +223,8 @@ tbody > tr:nth-of-type(odd) {background-color: white;}
 .txt-uppercase {text-transform: uppercase;}
 .txt-align-left {text-align: left;}
 .txt-align-right {text-align: right;}
-
 .form-group {margin-bottom: 20px;}
 .m-0 {margin:0;}
-
 input[type="text"],
 input[type="email"],
 textarea {
@@ -237,11 +234,9 @@ textarea {
     border-radius: 3px;
     font-size: 16px;
 }
-
 textarea {
     height: 100px;
 }
-
 button[type="submit"] {
     width: 100%;
     background-color: #4CAF50;
@@ -251,7 +246,6 @@ button[type="submit"] {
     border-radius: 3px;
     cursor: pointer;
 }
-
 button[type="submit"]:hover {
     background-color: #45a049;
 }
