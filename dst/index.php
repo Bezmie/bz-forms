@@ -204,6 +204,7 @@ body {
     font-family: sans-serif;
     gap: 10px;
 }
+p {margin:0;}
 section {
     width: 100%;
     max-width: 940px;
